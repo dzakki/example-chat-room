@@ -24,7 +24,10 @@ io.on('connection', (socket) => {
   console.log('a user connected');
 
   io.emit("rooms", rooms)
-
+  io.on("rooms", function  () {
+    console.log("emitroom ")
+    io.emit("rooms", rooms)
+  })
   // listen from client to create new room
   socket.on("new-room", function (name) {
 
@@ -41,11 +44,13 @@ io.on('connection', (socket) => {
   })
 
   socket.on("join-room", function  (room) {
+    // join room
     socket.join(room)
 
     const indexRoom = rooms.findIndex(function (r) {
       return String(r.id) === String(room)
     })
+    // emit to client by specifik room
     io.to(String(room)).emit("chats", rooms[indexRoom])
   })
 
