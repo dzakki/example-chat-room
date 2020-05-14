@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Simple room</title>
+</head>
+<body>
+    
+  
+  <form id="formUsername">
+    <input type="text" id="username" autocomplete="off">
+    <input type="submit" value="set username">
+  </form>
+
+  <p id="usernameText"></p>
+
+  <h1>List rooms</h1>
+  <ul id="listRoom">
+  </ul>
+
+  <form id="formRoom">
+    <label>name</label>
+    <input type="text" id="nameRoom">
+    <input type="submit" value="create a room">
+  </form>
+
+  <hr>
+
+
+  <div id="chat">
+    <h2 id="myRoom"></h2>
+    <ul id="listChat">
+      
+    </ul>
+
+    <form id="formChat">
+      <label>message</label>
+      <input type="text" id="messageChat">
+      <input type="submit" value="send message">
+    </form>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+  <script>
+
+  $(document).ready(function() {
+
+    $("#formUsername").submit(function(event) {
+      event.preventDefault()
+      localStorage.setItem("username", $("#username").val())
+      $("#usernameText").text(`your name is ${$("#username").val()}`)
+      $("#username").val("")
+    });
+
+
+    const socket = io.connect('http://localhost:3000')
+    $("#chat").hide()
+    $("#formChat").hide()
+
+    // listen rooms
+    socket.on("rooms", function (rooms) {
+      // generate rooms
+      const elListRoom = $("#listRoom")
+      elListRoom.empty()
+      let html = ``
+      rooms.forEach((room) => {
+        html += `<li>
+                    ${room.name}
+                    <button class="join-room" data-id="${room.id}" data-name="${room.name}"> join room </button>
+                 </li>`
+      })
+      elListRoom.html(html)
+    })
+
+    // create room
+    $("#formRoom").submit(function(event) {
+      /* Act on the event */
+      event.preventDefault()
+      const nameRoom = $("#nameRoom").val()
+      // emit to server for create new room
+      socket.emit("new-room", nameRoom);
+      $("#nameRoom").val("")
+
+    });
+
+    // join room
+
+    $(document).on('click', '.join-room', function(event) {
+      event.preventDefault();
+      /* Act on the event */
+      const idRoom = $(this).attr('data-id');
+      const nameRoom = $(this).attr('data-name');
+      localStorage.setItem("id_room", idRoom)
+      localStorage.setItem("name_room", nameRoom)
+
+      $("#chat").show()
+      $("#formChat").show()
+      $("#myRoom").text(`my room is ${nameRoom}`);
+
+      socket.emit("join-room", String(idRoom))
+
+      // socket.on("new-chat", function (payload) {
+      //   console.log(payload)
+      //   if (payload) {
+      //     
+      //   }
+      // })
+      socket.emit("chats", String(idRoom))
+      socket.on("chats", function  (payload) {
+        generateElementChat(payload)
+      })
+
+    });
+
+    $("#formChat").submit(function(event) {
+      event.preventDefault()
+      console.log("click")
+      const message = $("#messageChat").val()
+      const payload = {
+        chat: {
+          message: message,
+          by: localStorage.getItem("username") || "anonymou"
+        },
+        room: {
+          id: localStorage.getItem("id_room"),
+        }
+      }
+      socket.emit("new-chat", payload)
+      $("#messageChat").val("")
+    });
+
+  });
+
+  function generateElementChat (payload) {
+    const elListChat = $("#listChat") 
+    elListChat.empty()
+    let html =  ``
+    const {chats} = payload
+    chats.forEach((chat) => {
+      html += `<li>
+                  ${chat.message}
+                  by: ${chat.by}
+               </li>`
+    })
+    elListChat.html(html)
+  }
+
+  </script>
+</body>
+</html>
